@@ -17,7 +17,6 @@
 package net.objecthunter.exp4j;
 
 import net.objecthunter.exp4j.function.Functions;
-import net.objecthunter.exp4j.operator.Operator;
 import net.objecthunter.exp4j.shuntingyard.ShuntingYard;
 import net.objecthunter.exp4j.tokenizer.Token;
 
@@ -48,43 +47,6 @@ public class ExpressionBuilder {
         this.variableNames = new HashSet<>(5);
     }
 
-//    /**
-//     * Add a {@link net.objecthunter.exp4j.function.Function} implementation available for use in the expression
-//     *
-//     * @param function the custom {@link net.objecthunter.exp4j.function.Function} implementation that should be available for use in the expression.
-//     * @return the ExpressionBuilder instance
-//     */
-//    public ExpressionBuilder function(Function function) {
-//        this.userFunctions.put(function.getName(), function);
-//        return this;
-//    }
-//
-//    /**
-//     * Add multiple {@link net.objecthunter.exp4j.function.Function} implementations available for use in the expression
-//     *
-//     * @param functions the custom {@link net.objecthunter.exp4j.function.Function} implementations
-//     * @return the ExpressionBuilder instance
-//     */
-//    public ExpressionBuilder functions(Function... functions) {
-//        for (Function f : functions) {
-//            this.userFunctions.put(f.getName(), f);
-//        }
-//        return this;
-//    }
-//
-//    /**
-//     * Add multiple {@link net.objecthunter.exp4j.function.Function} implementations available for use in the expression
-//     *
-//     * @param functions A {@link java.util.List} of custom {@link net.objecthunter.exp4j.function.Function} implementations
-//     * @return the ExpressionBuilder instance
-//     */
-//    public ExpressionBuilder functions(List<Function> functions) {
-//        for (Function f : functions) {
-//            this.userFunctions.put(f.getName(), f);
-//        }
-//        return this;
-//    }
-
     /**
      * Declare variable names used in the expression
      *
@@ -93,17 +55,6 @@ public class ExpressionBuilder {
      */
     public ExpressionBuilder variables(Set<String> variableNames) {
         this.variableNames.addAll(variableNames);
-        return this;
-    }
-
-    /**
-     * Declare variable names used in the expression
-     *
-     * @param variableNames the variables used in the expression
-     * @return the ExpressionBuilder instance
-     */
-    public ExpressionBuilder variables(String... variableNames) {
-        Collections.addAll(this.variableNames, variableNames);
         return this;
     }
 
@@ -120,52 +71,6 @@ public class ExpressionBuilder {
 
     public ExpressionBuilder implicitMultiplication(boolean enabled) {
         this.implicitMultiplication = enabled;
-        return this;
-    }
-
-//    /**
-//     * Add an {@link net.objecthunter.exp4j.operator.Operator} which should be available for use in the expression
-//     *
-//     * @param operator the custom {@link net.objecthunter.exp4j.operator.Operator} to add
-//     * @return the ExpressionBuilder instance
-//     */
-//    public ExpressionBuilder operator(Operator operator) {
-//        this.checkOperatorSymbol(operator);
-//        return this;
-//    }
-
-    private void checkOperatorSymbol(Operator op) {
-        String name = op.getSymbol();
-        for (char ch : name.toCharArray()) {
-            if (!Operator.isAllowedOperatorChar(ch)) {
-                throw new IllegalArgumentException("The operator symbol '" + name + "' is invalid");
-            }
-        }
-    }
-
-    /**
-     * Add multiple {@link net.objecthunter.exp4j.operator.Operator} implementations which should be available for use in the expression
-     *
-     * @param operators the set of custom {@link net.objecthunter.exp4j.operator.Operator} implementations to add
-     * @return the ExpressionBuilder instance
-     */
-    public ExpressionBuilder operator(Operator... operators) {
-        for (Operator o : operators) {
-            this.operator(o);
-        }
-        return this;
-    }
-
-    /**
-     * Add multiple {@link net.objecthunter.exp4j.operator.Operator} implementations which should be available for use in the expression
-     *
-     * @param operators the {@link java.util.List} of custom {@link net.objecthunter.exp4j.operator.Operator} implementations to add
-     * @return the ExpressionBuilder instance
-     */
-    public ExpressionBuilder operator(List<Operator> operators) {
-        for (Operator o : operators) {
-            this.operator(o);
-        }
         return this;
     }
 

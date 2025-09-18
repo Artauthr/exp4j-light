@@ -32,8 +32,6 @@ public class Expression {
 
     private final Map<String, MutableDouble> variables;
 
-    private final Set<String> userFunctionNames;
-
     private final int requiredStackSize;
 
     private final ArrayStack stack;
@@ -49,7 +47,6 @@ public class Expression {
         for (Map.Entry<String, MutableDouble> entry : existing.variables.entrySet()) {
             this.variables.put(entry.getKey(), new MutableDouble(entry.getValue().value));
         }
-        this.userFunctionNames = new HashSet<>(existing.userFunctionNames);
         this.requiredStackSize = getRequiredStackSize(tokens);
         this.stack = new ArrayStack(this.requiredStackSize);
     }
@@ -57,15 +54,6 @@ public class Expression {
     Expression(final Token[] tokens) {
         this.tokens = tokens;
         this.variables = new HashMap<>();
-        this.userFunctionNames = Collections.emptySet();
-        this.requiredStackSize = getRequiredStackSize(tokens);
-        this.stack = new ArrayStack(this.requiredStackSize);
-    }
-
-    Expression(final Token[] tokens, Set<String> userFunctionNames) {
-        this.tokens = tokens;
-        this.variables = new HashMap<>();
-        this.userFunctionNames = userFunctionNames;
         this.requiredStackSize = getRequiredStackSize(tokens);
         this.stack = new ArrayStack(this.requiredStackSize);
     }
@@ -86,7 +74,7 @@ public class Expression {
     }
 
     private void checkVariableName(String name) {
-        if (this.userFunctionNames.contains(name) || Functions.getBuiltinFunction(name) != null) {
+        if (Functions.getBuiltinFunction(name) != null) {
             throw new IllegalArgumentException("The variable name '" + name + "' is invalid. Since there exists a function with the same name");
         }
     }
