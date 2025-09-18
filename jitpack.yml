@@ -3,5 +3,6 @@ jdk:
 
 build:
   tool: maven
+
   commands:
-    - mvn install -DskipTests
+    - mvn -B install -DskipTests --file pom.xml
