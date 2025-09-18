@@ -26,8 +26,6 @@ import net.objecthunter.exp4j.operator.UnaryOperator;
 import net.objecthunter.exp4j.tokenizer.*;
 
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
 
 public class Expression {
     private final Token[] tokens;
@@ -38,16 +36,7 @@ public class Expression {
 
     private final int requiredStackSize;
 
-    private final EvaluationContext evaluationContext;
-
-    private static Map<String, MutableDouble> createDefaultVariables() {
-        final Map<String, MutableDouble> vars = new HashMap<>(4);
-        vars.put("pi", new MutableDouble(Math.PI));
-        vars.put("π", new MutableDouble(Math.PI));
-        vars.put("φ", new MutableDouble(1.61803398874d));
-        vars.put("e", new MutableDouble(Math.E));
-        return vars;
-    }
+    private final ArrayStack stack;
 
     /**
      * Creates a new expression that is a copy of the existing one.
@@ -62,23 +51,23 @@ public class Expression {
         }
         this.userFunctionNames = new HashSet<>(existing.userFunctionNames);
         this.requiredStackSize = getRequiredStackSize(tokens);
-        this.evaluationContext = new EvaluationContext(this.requiredStackSize);
+        this.stack = new ArrayStack(this.requiredStackSize);
     }
 
     Expression(final Token[] tokens) {
         this.tokens = tokens;
-        this.variables = createDefaultVariables();
+        this.variables = new HashMap<>();
         this.userFunctionNames = Collections.emptySet();
         this.requiredStackSize = getRequiredStackSize(tokens);
-        this.evaluationContext = new EvaluationContext(this.requiredStackSize);
+        this.stack = new ArrayStack(this.requiredStackSize);
     }
 
     Expression(final Token[] tokens, Set<String> userFunctionNames) {
         this.tokens = tokens;
-        this.variables = createDefaultVariables();
+        this.variables = new HashMap<>();
         this.userFunctionNames = userFunctionNames;
         this.requiredStackSize = getRequiredStackSize(tokens);
-        this.evaluationContext = new EvaluationContext(this.requiredStackSize);
+        this.stack = new ArrayStack(this.requiredStackSize);
     }
 
     public Expression setVariable(final String name, final double value) {
@@ -90,6 +79,10 @@ public class Expression {
             this.variables.put(name, new MutableDouble(value));
         }
         return this;
+    }
+
+    private void clearStack () {
+        this.stack.clear();
     }
 
     private void checkVariableName(String name) {
@@ -178,18 +171,10 @@ public class Expression {
 
     }
 
-    public ValidationResult validate() {
-        return validate(true);
-    }
-
-    public Future<Double> evaluateAsync(ExecutorService executor) {
-        return executor.submit(this::evaluate);
-    }
-
     public double evaluate() {
-        final EvaluationContext context = this.evaluationContext;
-        context.clear();
-        final ArrayStack output = context.stack;
+        clearStack();
+        final ArrayStack output = this.stack;
+
         output.ensureCapacity(this.requiredStackSize);
         for (Token t : tokens) {
             if (t.getType() == Token.TOKEN_NUMBER) {
@@ -247,7 +232,7 @@ public class Expression {
         }
     }
 
-    private static int getRequiredStackSize (final Token[] tokens) {
+    private static int getRequiredStackSize(final Token[] tokens) {
         int currentStackDepth = 0;
         int maxStackDepth = 0;
         int maxArity = 0;
@@ -287,17 +272,5 @@ public class Expression {
         }
 
         return Math.max(maxStackDepth, 1);
-    }
-
-    private static final class EvaluationContext {
-        final ArrayStack stack;
-
-        EvaluationContext(final int stackCapacity) {
-            this.stack = new ArrayStack(Math.max(stackCapacity, 1));
-        }
-
-        void clear() {
-            this.stack.clear();
-        }
     }
 }

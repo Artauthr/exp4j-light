@@ -16,10 +16,10 @@
 
 package net.objecthunter.exp4j;
 
-import net.objecthunter.exp4j.function.Function;
 import net.objecthunter.exp4j.function.Functions;
 import net.objecthunter.exp4j.operator.Operator;
 import net.objecthunter.exp4j.shuntingyard.ShuntingYard;
+import net.objecthunter.exp4j.tokenizer.Token;
 
 import java.util.*;
 
@@ -30,10 +30,6 @@ import java.util.*;
 public class ExpressionBuilder {
 
     private final String expression;
-
-    private final Map<String, Function> userFunctions;
-
-    private final Map<String, Operator> userOperators;
 
     private final Set<String> variableNames;
 
@@ -49,47 +45,45 @@ public class ExpressionBuilder {
             throw new IllegalArgumentException("Expression can not be empty");
         }
         this.expression = expression;
-        this.userOperators = new HashMap<>(4);
-        this.userFunctions = new HashMap<>(4);
-        this.variableNames = new HashSet<>(4);
+        this.variableNames = new HashSet<>(5);
     }
 
-    /**
-     * Add a {@link net.objecthunter.exp4j.function.Function} implementation available for use in the expression
-     *
-     * @param function the custom {@link net.objecthunter.exp4j.function.Function} implementation that should be available for use in the expression.
-     * @return the ExpressionBuilder instance
-     */
-    public ExpressionBuilder function(Function function) {
-        this.userFunctions.put(function.getName(), function);
-        return this;
-    }
-
-    /**
-     * Add multiple {@link net.objecthunter.exp4j.function.Function} implementations available for use in the expression
-     *
-     * @param functions the custom {@link net.objecthunter.exp4j.function.Function} implementations
-     * @return the ExpressionBuilder instance
-     */
-    public ExpressionBuilder functions(Function... functions) {
-        for (Function f : functions) {
-            this.userFunctions.put(f.getName(), f);
-        }
-        return this;
-    }
-
-    /**
-     * Add multiple {@link net.objecthunter.exp4j.function.Function} implementations available for use in the expression
-     *
-     * @param functions A {@link java.util.List} of custom {@link net.objecthunter.exp4j.function.Function} implementations
-     * @return the ExpressionBuilder instance
-     */
-    public ExpressionBuilder functions(List<Function> functions) {
-        for (Function f : functions) {
-            this.userFunctions.put(f.getName(), f);
-        }
-        return this;
-    }
+//    /**
+//     * Add a {@link net.objecthunter.exp4j.function.Function} implementation available for use in the expression
+//     *
+//     * @param function the custom {@link net.objecthunter.exp4j.function.Function} implementation that should be available for use in the expression.
+//     * @return the ExpressionBuilder instance
+//     */
+//    public ExpressionBuilder function(Function function) {
+//        this.userFunctions.put(function.getName(), function);
+//        return this;
+//    }
+//
+//    /**
+//     * Add multiple {@link net.objecthunter.exp4j.function.Function} implementations available for use in the expression
+//     *
+//     * @param functions the custom {@link net.objecthunter.exp4j.function.Function} implementations
+//     * @return the ExpressionBuilder instance
+//     */
+//    public ExpressionBuilder functions(Function... functions) {
+//        for (Function f : functions) {
+//            this.userFunctions.put(f.getName(), f);
+//        }
+//        return this;
+//    }
+//
+//    /**
+//     * Add multiple {@link net.objecthunter.exp4j.function.Function} implementations available for use in the expression
+//     *
+//     * @param functions A {@link java.util.List} of custom {@link net.objecthunter.exp4j.function.Function} implementations
+//     * @return the ExpressionBuilder instance
+//     */
+//    public ExpressionBuilder functions(List<Function> functions) {
+//        for (Function f : functions) {
+//            this.userFunctions.put(f.getName(), f);
+//        }
+//        return this;
+//    }
 
     /**
      * Declare variable names used in the expression
@@ -129,17 +123,16 @@ public class ExpressionBuilder {
         return this;
     }
 
-    /**
-     * Add an {@link net.objecthunter.exp4j.operator.Operator} which should be available for use in the expression
-     *
-     * @param operator the custom {@link net.objecthunter.exp4j.operator.Operator} to add
-     * @return the ExpressionBuilder instance
-     */
-    public ExpressionBuilder operator(Operator operator) {
-        this.checkOperatorSymbol(operator);
-        this.userOperators.put(operator.getSymbol(), operator);
-        return this;
-    }
+//    /**
+//     * Add an {@link net.objecthunter.exp4j.operator.Operator} which should be available for use in the expression
+//     *
+//     * @param operator the custom {@link net.objecthunter.exp4j.operator.Operator} to add
+//     * @return the ExpressionBuilder instance
+//     */
+//    public ExpressionBuilder operator(Operator operator) {
+//        this.checkOperatorSymbol(operator);
+//        return this;
+//    }
 
     private void checkOperatorSymbol(Operator op) {
         String name = op.getSymbol();
@@ -186,21 +179,19 @@ public class ExpressionBuilder {
             throw new IllegalArgumentException("The expression can not be empty");
         }
 
-        /* set the constants' varibale names */
-        variableNames.add("pi");
-        variableNames.add("π");
-        variableNames.add("e");
-        variableNames.add("φ");
-
         /* Check if there are duplicate vars/functions */
         for (String var : variableNames) {
-            if (Functions.getBuiltinFunction(var) != null || userFunctions.containsKey(var)) {
+            if (Functions.getBuiltinFunction(var) != null) {
                 throw new IllegalArgumentException("A variable can not have the same name as a function [" + var + "]");
             }
         }
 
-        return new Expression(ShuntingYard.convertToRPN(this.expression, this.userFunctions, this.userOperators,
-                this.variableNames, this.implicitMultiplication), this.userFunctions.keySet());
+        Token[] tokens = ShuntingYard.convertToRPN(
+                this.expression,
+                this.variableNames,
+                this.implicitMultiplication);
+
+        return new Expression(tokens);
     }
 
 }
