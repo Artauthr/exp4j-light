@@ -1,0 +1,7 @@
+jdk:
+  - openjdk8
+
+build:
+  tool: maven
+  commands:
+    - mvn install -DskipTests
