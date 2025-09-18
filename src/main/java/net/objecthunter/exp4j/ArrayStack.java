@@ -43,11 +43,24 @@ class ArrayStack {
         idx = -1;
     }
 
+    void clear() {
+        idx = -1;
+    }
+
+    void ensureCapacity(int capacity) {
+        if (capacity <= data.length) {
+            return;
+        }
+        double[] temp = new double[capacity];
+        if (idx >= 0) {
+            System.arraycopy(data, 0, temp, 0, idx + 1);
+        }
+        data = temp;
+    }
+
     void push(double value) {
         if (idx + 1 == data.length) {
-            double[] temp = new double[(int) (data.length * 1.2) + 1];
-            System.arraycopy(data, 0, temp, 0, data.length);
-            data = temp;
+            ensureCapacity((int) (data.length * 1.2) + 1);
         }
 
         data[++idx] = value;

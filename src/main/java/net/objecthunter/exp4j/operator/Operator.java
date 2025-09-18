@@ -114,14 +114,6 @@ public abstract class Operator {
     }
 
     /**
-     * Apply the operation on the given operands
-     *
-     * @param args the operands for the operation
-     * @return the calculated result of the operation
-     */
-    public abstract double apply(double... args);
-
-    /**
      * Get the operator symbol
      *
      * @return the symbol

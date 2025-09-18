@@ -16,8 +16,13 @@
 package net.objecthunter.exp4j;
 
 import net.objecthunter.exp4j.function.Function;
+import net.objecthunter.exp4j.function.Function0;
+import net.objecthunter.exp4j.function.Function1;
+import net.objecthunter.exp4j.function.Function2;
 import net.objecthunter.exp4j.function.Functions;
 import net.objecthunter.exp4j.operator.Operator;
+import net.objecthunter.exp4j.operator.BinaryOperator;
+import net.objecthunter.exp4j.operator.UnaryOperator;
 import net.objecthunter.exp4j.tokenizer.*;
 
 import java.util.*;
@@ -25,19 +30,22 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
 public class Expression {
-
     private final Token[] tokens;
 
-    private final Map<String, Double> variables;
+    private final Map<String, MutableDouble> variables;
 
     private final Set<String> userFunctionNames;
 
-    private static Map<String, Double> createDefaultVariables() {
-        final Map<String, Double> vars = new HashMap<>(4);
-        vars.put("pi", Math.PI);
-        vars.put("π", Math.PI);
-        vars.put("φ", 1.61803398874d);
-        vars.put("e", Math.E);
+    private final int requiredStackSize;
+
+    private final EvaluationContext evaluationContext;
+
+    private static Map<String, MutableDouble> createDefaultVariables() {
+        final Map<String, MutableDouble> vars = new HashMap<>(4);
+        vars.put("pi", new MutableDouble(Math.PI));
+        vars.put("π", new MutableDouble(Math.PI));
+        vars.put("φ", new MutableDouble(1.61803398874d));
+        vars.put("e", new MutableDouble(Math.E));
         return vars;
     }
 
@@ -48,26 +56,39 @@ public class Expression {
      */
     public Expression(final Expression existing) {
         this.tokens = Arrays.copyOf(existing.tokens, existing.tokens.length);
-        this.variables = new HashMap<>();
-        this.variables.putAll(existing.variables);
+        this.variables = new HashMap<>(existing.variables.size());
+        for (Map.Entry<String, MutableDouble> entry : existing.variables.entrySet()) {
+            this.variables.put(entry.getKey(), new MutableDouble(entry.getValue().value));
+        }
         this.userFunctionNames = new HashSet<>(existing.userFunctionNames);
+        this.requiredStackSize = getRequiredStackSize(tokens);
+        this.evaluationContext = new EvaluationContext(this.requiredStackSize);
     }
 
     Expression(final Token[] tokens) {
         this.tokens = tokens;
         this.variables = createDefaultVariables();
         this.userFunctionNames = Collections.emptySet();
+        this.requiredStackSize = getRequiredStackSize(tokens);
+        this.evaluationContext = new EvaluationContext(this.requiredStackSize);
     }
 
     Expression(final Token[] tokens, Set<String> userFunctionNames) {
         this.tokens = tokens;
         this.variables = createDefaultVariables();
         this.userFunctionNames = userFunctionNames;
+        this.requiredStackSize = getRequiredStackSize(tokens);
+        this.evaluationContext = new EvaluationContext(this.requiredStackSize);
     }
 
     public Expression setVariable(final String name, final double value) {
         this.checkVariableName(name);
-        this.variables.put(name, value);
+        final MutableDouble holder = this.variables.get(name);
+        if (holder != null) {
+            holder.value = value;
+        } else {
+            this.variables.put(name, new MutableDouble(value));
+        }
         return this;
     }
 
@@ -153,7 +174,7 @@ public class Expression {
         if (count > 1) {
             errors.add("Too many operands");
         }
-        return errors.size() == 0 ? ValidationResult.SUCCESS : new ValidationResult(false, errors);
+        return errors.isEmpty() ? ValidationResult.SUCCESS : new ValidationResult(false, errors);
 
     }
 
@@ -166,49 +187,117 @@ public class Expression {
     }
 
     public double evaluate() {
-        final ArrayStack output = new ArrayStack();
+        final EvaluationContext context = this.evaluationContext;
+        context.clear();
+        final ArrayStack output = context.stack;
+        output.ensureCapacity(this.requiredStackSize);
         for (Token t : tokens) {
             if (t.getType() == Token.TOKEN_NUMBER) {
                 output.push(((NumberToken) t).getValue());
             } else if (t.getType() == Token.TOKEN_VARIABLE) {
                 final String name = ((VariableToken) t).getName();
-                final Double value = this.variables.get(name);
+                final MutableDouble value = this.variables.get(name);
                 if (value == null) {
                     throw new IllegalArgumentException("No value has been set for the setVariable '" + name + "'.");
                 }
-                output.push(value);
+                output.push(value.value);
             } else if (t.getType() == Token.TOKEN_OPERATOR) {
                 OperatorToken op = (OperatorToken) t;
-                if (output.size() < op.getOperator().getNumOperands()) {
-                    throw new IllegalArgumentException("Invalid number of operands available for '" + op.getOperator().getSymbol() + "' operator");
+                final Operator operator = op.getOperator();
+                final int operandCount = operator.getNumOperands();
+                if (output.size() < operandCount) {
+                    throw new IllegalArgumentException("Invalid number of operands available for '" + operator.getSymbol() + "' operator");
                 }
-                if (op.getOperator().getNumOperands() == 2) {
-                    /* pop the operands and push the result of the operation */
+                if (operator instanceof BinaryOperator) {
                     double rightArg = output.pop();
                     double leftArg = output.pop();
-                    output.push(op.getOperator().apply(leftArg, rightArg));
-                } else if (op.getOperator().getNumOperands() == 1) {
-                    /* pop the operand and push the result of the operation */
+                    output.push(((BinaryOperator) operator).apply(leftArg, rightArg));
+                } else if (operator instanceof UnaryOperator) {
                     double arg = output.pop();
-                    output.push(op.getOperator().apply(arg));
+                    output.push(((UnaryOperator) operator).apply(arg));
                 }
             } else if (t.getType() == Token.TOKEN_FUNCTION) {
                 FunctionToken func = (FunctionToken) t;
-                final int numArguments = func.getFunction().getNumArguments();
+                final Function function = func.getFunction();
+                final int numArguments = function.getNumArguments();
                 if (output.size() < numArguments) {
-                    throw new IllegalArgumentException("Invalid number of arguments available for '" + func.getFunction().getName() + "' function");
+                    throw new IllegalArgumentException("Invalid number of arguments available for '" + function.getName() + "' function");
                 }
-                /* collect the arguments from the stack */
-                double[] args = new double[numArguments];
-                for (int j = numArguments - 1; j >= 0; j--) {
-                    args[j] = output.pop();
+                if (function instanceof Function0) {
+                    output.push(((Function0) function).apply());
+                } else if (function instanceof Function1) {
+                    output.push(((Function1) function).apply(output.pop()));
+                } else if (function instanceof Function2) {
+                    double arg2 = output.pop();
+                    double arg1 = output.pop();
+                    output.push(((Function2) function).apply(arg1, arg2));
                 }
-                output.push(func.getFunction().apply(args));
             }
         }
         if (output.size() > 1) {
             throw new IllegalArgumentException("Invalid number of items on the output queue. Might be caused by an invalid number of arguments for a function.");
         }
         return output.pop();
+    }
+
+    private static final class MutableDouble {
+        double value;
+        MutableDouble(final double value) {
+            this.value = value;
+        }
+    }
+
+    private static int getRequiredStackSize (final Token[] tokens) {
+        int currentStackDepth = 0;
+        int maxStackDepth = 0;
+        int maxArity = 0;
+
+        for (final Token token : tokens) {
+            switch (token.getType()) {
+                case Token.TOKEN_NUMBER:
+                case Token.TOKEN_VARIABLE:
+                    currentStackDepth++;
+                    break;
+                case Token.TOKEN_FUNCTION:
+                    final Function function = ((FunctionToken) token).getFunction();
+                    final int functionArity = function.getNumArguments();
+                    if (functionArity > maxArity) {
+                        maxArity = functionArity;
+                    }
+                    currentStackDepth -= functionArity;
+                    if (currentStackDepth < 0) {
+                        currentStackDepth = 0;
+                    }
+                    currentStackDepth++;
+                    break;
+                case Token.TOKEN_OPERATOR:
+                    final Operator operator = ((OperatorToken) token).getOperator();
+                    currentStackDepth -= operator.getNumOperands();
+                    if (currentStackDepth < 0) {
+                        currentStackDepth = 0;
+                    }
+                    currentStackDepth++;
+                    break;
+                default:
+                    break;
+            }
+            if (currentStackDepth > maxStackDepth) {
+                maxStackDepth = currentStackDepth;
+            }
+        }
+
+        return Math.max(maxStackDepth, 1);
+    }
+
+    private static final class EvaluationContext {
+        final ArrayStack stack;
+
+        EvaluationContext(final int stackCapacity) {
+            this.stack = new ArrayStack(Math.max(stackCapacity, 1));
+        }
+
+        void clear() {
+            this.stack.clear();
+        }
     }
 }
