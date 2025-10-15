@@ -51,8 +51,10 @@ public class Functions {
     private static final int INDEX_SGN = 28;
     private static final int INDEX_TO_RADIAN = 29;
     private static final int INDEX_TO_DEGREE = 30;
+    private static final int INDEX_MIN = 31;
+    private static final int INDEX_MAX = 32;
 
-    private static final Function[] BUILT_IN_FUNCTIONS = new Function[31];
+    private static final Function[] BUILT_IN_FUNCTIONS = new Function[33];
 
     static {
         BUILT_IN_FUNCTIONS[INDEX_SIN] = new Function1("sin") {
@@ -262,7 +264,18 @@ public class Functions {
                 return Math.toDegrees(arg);
             }
         };
-
+        BUILT_IN_FUNCTIONS[INDEX_MIN] = new Function2("min") {
+            @Override
+            public double apply (double arg1, double arg2) {
+                return Math.min(arg1, arg2);
+            }
+        };
+        BUILT_IN_FUNCTIONS[INDEX_MAX] = new Function2("max") {
+            @Override
+            public double apply (double arg1, double arg2) {
+                return Math.max(arg1, arg2);
+            }
+        };
     }
 
     /**
@@ -334,6 +347,10 @@ public class Functions {
                 return BUILT_IN_FUNCTIONS[INDEX_TO_RADIAN];
             case "todegree":
                 return BUILT_IN_FUNCTIONS[INDEX_TO_DEGREE];
+            case "min":
+                return BUILT_IN_FUNCTIONS[INDEX_MIN];
+            case "max":
+                return BUILT_IN_FUNCTIONS[INDEX_MAX];
             default:
                 return null;
         }
