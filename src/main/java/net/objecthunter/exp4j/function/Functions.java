@@ -15,6 +15,8 @@
  */
 package net.objecthunter.exp4j.function;
 
+import java.util.concurrent.ThreadLocalRandom;
+
 /**
  * Class representing the builtin functions available for use in expressions
  */
@@ -53,8 +55,9 @@ public class Functions {
     private static final int INDEX_TO_DEGREE = 30;
     private static final int INDEX_MIN = 31;
     private static final int INDEX_MAX = 32;
+    private static final int INDEX_RAND_RANGE = 33;
 
-    private static final Function[] BUILT_IN_FUNCTIONS = new Function[33];
+    private static final Function[] BUILT_IN_FUNCTIONS = new Function[34];
 
     static {
         BUILT_IN_FUNCTIONS[INDEX_SIN] = new Function1("sin") {
@@ -276,6 +279,17 @@ public class Functions {
                 return Math.max(arg1, arg2);
             }
         };
+        BUILT_IN_FUNCTIONS[INDEX_RAND_RANGE] = new Function2("random") {
+            @Override
+            public double apply (double arg1, double arg2) {
+                if (arg2 < arg1) {
+                    double t = arg1;
+                    arg1 = arg2;
+                    arg2 = t;
+                }
+                return ThreadLocalRandom.current().nextDouble(arg1, arg2);
+            }
+        };
     }
 
     /**
@@ -351,6 +365,8 @@ public class Functions {
                 return BUILT_IN_FUNCTIONS[INDEX_MIN];
             case "max":
                 return BUILT_IN_FUNCTIONS[INDEX_MAX];
+            case "random":
+                return BUILT_IN_FUNCTIONS[INDEX_RAND_RANGE];
             default:
                 return null;
         }
