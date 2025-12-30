@@ -96,12 +96,7 @@ public class Expression {
     }
 
     public Set<String> getVariableNames() {
-        final Set<String> variables = new HashSet<>();
-        for (final Token t : tokens) {
-            if (t.getType() == Token.TOKEN_VARIABLE)
-                variables.add(((VariableToken) t).getName());
-        }
-        return variables;
+        return variables.keySet();
     }
 
     public ValidationResult validate(boolean checkVariablesSet) {
