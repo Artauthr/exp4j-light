@@ -91,6 +91,10 @@ public class Expression {
         return this;
     }
 
+    public boolean hasVariable(String name) {
+        return variables.containsKey(name);
+    }
+
     public Set<String> getVariableNames() {
         final Set<String> variables = new HashSet<>();
         for (final Token t : tokens) {
