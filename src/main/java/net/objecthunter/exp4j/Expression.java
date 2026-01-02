@@ -32,6 +32,8 @@ public class Expression {
 
     private final Map<String, MutableDouble> variables;
 
+    private final HashSet<String> variableNames;
+
     private final int requiredStackSize;
 
     private final ArrayStack stack;
@@ -49,6 +51,7 @@ public class Expression {
         }
         this.requiredStackSize = getRequiredStackSize(tokens);
         this.stack = new ArrayStack(this.requiredStackSize);
+        this.variableNames = new HashSet<>(existing.variableNames);
     }
 
     Expression(final Token[] tokens) {
@@ -56,6 +59,12 @@ public class Expression {
         this.variables = new HashMap<>();
         this.requiredStackSize = getRequiredStackSize(tokens);
         this.stack = new ArrayStack(this.requiredStackSize);
+
+        variableNames = new HashSet<>();
+        for (final Token t : tokens) {
+            if (t.getType() == Token.TOKEN_VARIABLE)
+                variableNames.add(((VariableToken) t).getName());
+        }
     }
 
     public Expression setVariable(final String name, final double value) {
@@ -92,11 +101,11 @@ public class Expression {
     }
 
     public boolean hasVariable(String name) {
-        return variables.containsKey(name);
+        return variableNames.contains(name);
     }
 
     public Set<String> getVariableNames() {
-        return variables.keySet();
+        return variableNames;
     }
 
     public ValidationResult validate(boolean checkVariablesSet) {
